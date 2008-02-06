@@ -21,7 +21,6 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 wchar_t* getUptimeStr(wchar_t*);
 void setFont(LOGFONT*);
 void copyTextToClipboard(HWND, wchar_t*);
-void readSettingsFromFile(LPCTSTR fileName);
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmdShow) {
     WNDCLASSEX wnd;
@@ -116,8 +115,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                 GetWindowRect(hWnd, rect);
                 wchar_t x_pos[4];
                 wchar_t y_pos[4];
-                _ltow(rect->left, x_pos, 10);
-                _ltow(rect->top, y_pos, 10);
+                _ltow_s(rect->left, x_pos, 4, 10);
+                _ltow_s(rect->top, y_pos, 4, 10);
                 WritePrivateProfileString(_T("Position"), _T("X"), x_pos, iniFile);
                 WritePrivateProfileString(_T("Position"), _T("Y"), y_pos, iniFile);
                 delete rect;
@@ -136,7 +135,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             ReleaseDC(hWnd, hdc);
             break;
         case WM_CHAR:
-            if (MapVirtualKey(wparam, MAPVK_VK_TO_CHAR) == 27)
+            if (wparam == 27)
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
             if (wparam == 'c' || wparam == 'C') {
                 getUptimeStr(time);
@@ -274,11 +273,7 @@ void copyTextToClipboard(HWND hWnd, wchar_t* src) {
     //копируем src в буфер окна hWnd
     if(OpenClipboard(hWnd)){
         EmptyClipboard();
-        SetClipboardData(CF_TEXT, (HANDLE)src);
+        SetClipboardData(CF_UNICODETEXT, (HANDLE)src);
         CloseClipboard();
     }
-}
-
-void readSettingsFromFile(LPCTSTR fileName) {
-
 }
