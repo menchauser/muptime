@@ -20,12 +20,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Muha"
             VALUE "FileDescription", "Uptime Application"
-            VALUE "FileVersion", "0, 0, 7, 3"
+            VALUE "FileVersion", "0, 0, 7, 4"
             VALUE "InternalName", "m_Uptime"
             VALUE "LegalCopyright", "Copyright (C) Muha, 2008"
             VALUE "OriginalFilename", "muptime.exe"
             VALUE "ProductName", "Uptime"
-            VALUE "ProductVersion", "0, 0, 7, 3"
+            VALUE "ProductVersion", "0, 0, 7, 4"
         END
     END
     BLOCK "VarFileInfo"

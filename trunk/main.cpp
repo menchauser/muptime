@@ -151,7 +151,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             //обрабатываем нажатия на клавиатуру
             if (wparam == 27)
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
-            if (wparam = 'q' || wparam == 'Q')
+            if (wparam == 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
             break;
         case WM_LBUTTONDOWN:
