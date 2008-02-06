@@ -9,6 +9,7 @@
 
 #define ADDTIMEPART(time, str)        if (wcslen(str) <= 1) wcscat(time, _T("0\0")); wcscat(time, str);
 #define UCALLBACKMESSAGE 0x1001
+#define PICTOID 1025
 
 static TCHAR szWindowClass[] = _T("uptimeAppClass");
 static TCHAR szTitle[] = _T("muptime");
@@ -43,7 +44,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
             NULL);
         return 1;
     }
-
+    //читаем настройки из muptime.ini
     GetCurrentDirectory(MAX_PATH, iniFile);
     wcscat_s(iniFile, _T("\\muptime.ini"));
     POS_X = GetPrivateProfileInt(_T("Position"), _T("X"), POS_X, iniFile);
@@ -52,7 +53,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
         WS_EX_TOOLWINDOW,
         szWindowClass,
         szTitle,
-        WS_POPUP | WS_DLGFRAME, //WS_DLGFRAME
+        WS_POPUP | WS_DLGFRAME,
         POS_X, POS_Y,
         96, 25,
         NULL,
@@ -66,20 +67,21 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
             NULL);
         return 1;
     }
+    SetWindowPos(hWnd, HWND_TOPMOST, POS_X, POS_Y, 0, 0, SWP_NOSIZE);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
-    SetWindowPos(hWnd, HWND_TOPMOST, POS_X, POS_Y, 0, 0, SWP_NOSIZE);
     MSG msg;
     {
-        NOTIFYICONDATA ntdata;
-        ntdata.cbSize = sizeof(NOTIFYICONDATA);
-        ntdata.hWnd = hWnd;
-        ntdata.uID = 12;//идентификатор пиктограммы на панели задач
-        ntdata.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
-        ntdata.uCallbackMessage = UCALLBACKMESSAGE;
-        ntdata.hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
-        wcscpy_s(ntdata.szTip, _T("muptime"));
-        Shell_NotifyIcon(NIM_ADD, &ntdata);
+        NOTIFYICONDATA* ntdata = new NOTIFYICONDATA;
+        ntdata->cbSize = sizeof(NOTIFYICONDATA);
+        ntdata->hWnd = hWnd;
+        ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
+        ntdata->uFlags = NIF_MESSAGE | NIF_INFO | NIF_ICON;
+        ntdata->uCallbackMessage = UCALLBACKMESSAGE;
+        ntdata->hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
+        wcscpy_s(ntdata->szTip, _T("muptime"));
+        Shell_NotifyIcon(NIM_ADD, ntdata);
+        delete ntdata;
     }
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
@@ -97,6 +99,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
     HDC hdc;
     switch(message) {
         case WM_PAINT:
+            //при перерисовке: отображаем текущий аптайм
             hdc = BeginPaint(hWnd, &ps);
             setFont(&lg);
             fnt = CreateFontIndirect(&lg);
@@ -107,9 +110,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             DeleteObject(fnt);
             break;
         case WM_CREATE:
+            //при создании: ставим таймер на обновление аптайма
             SetTimer(hWnd, IDT_TIMER1, 1000, (TIMERPROC)NULL);
             break;
         case WM_DESTROY:
+            //при выходе: сохраняем текущее положение окна, чистим трей, убиваем таймер и уходим
             {
                 LPRECT rect = new tagRECT;
                 GetWindowRect(hWnd, rect);
@@ -120,11 +125,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                 WritePrivateProfileString(_T("Position"), _T("X"), x_pos, iniFile);
                 WritePrivateProfileString(_T("Position"), _T("Y"), y_pos, iniFile);
                 delete rect;
+
+                NOTIFYICONDATA *ntdata = new NOTIFYICONDATA;
+                ntdata->cbSize = sizeof(NOTIFYICONDATA);
+                ntdata->hWnd = hWnd;
+                ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
+                Shell_NotifyIcon(NIM_DELETE, ntdata);
+                delete ntdata;
             }
             KillTimer(hWnd, IDT_TIMER1);
             PostQuitMessage(0);
             break;
         case WM_TIMER:
+            //при тике таймера: обновляем и отображаем аптайм
             hdc = GetDC(hWnd);
             setFont(&lg);
             fnt = CreateFontIndirect(&lg);
@@ -135,76 +148,60 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             ReleaseDC(hWnd, hdc);
             break;
         case WM_CHAR:
+            //обрабатываем нажатия на клавиатуру
             if (wparam == 27)
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
-            if (wparam == 'c' || wparam == 'C') {
-                getUptimeStr(time);
-                copyTextToClipboard(hWnd, time);
-            }
             if (wparam = 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
             break;
         case WM_LBUTTONDOWN:
+            //перетаскиваем окно программы левой кнопкой
             SendMessage(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, NULL);
             break;
         case WM_RBUTTONUP:
+            //копипастим текст по нажатию правой кнопки
             getUptimeStr(time);
             copyTextToClipboard(hWnd, time);
             break;
+        case WM_MBUTTONUP:
+            //выходим по клику средней кнопкой
+            SendMessage(hWnd, WM_DESTROY, wparam, lparam);
+            break;
         case WM_SIZE:
+            //при приходе сообщения о ресайзинге (от обработчика в трее) - изменяем окно окно
             if (wparam == SIZE_MINIMIZED) {
-                NOTIFYICONDATA ntdata;
-                ntdata.cbSize = sizeof(NOTIFYICONDATA);
-                ntdata.hWnd = hWnd;
-                ntdata.uID = 12;//идентификатор пиктограммы на панели задач
-                ntdata.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
-                ntdata.uCallbackMessage = UCALLBACKMESSAGE;
-                ntdata.hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
-                wcscpy(ntdata.szTip, _T("muptime"));
-                Shell_NotifyIcon(NIM_ADD, &ntdata);
                 ShowWindow(hWnd, SW_HIDE);
+                isMinimized = TRUE;
+            }
+            if (wparam == SIZE_MAXIMIZED) {
+                ShowWindow(hWnd, SW_SHOWNORMAL);
+                isMinimized = FALSE;
             }
             break;
         case UCALLBACKMESSAGE:
-            if (wparam == 12) {
+            if (wparam == PICTOID) {
+                //приходит сообщение от обработчика в трее - проверяем и восстанавливаем/сворачиваем окно
                 switch (lparam) {
                     case WM_LBUTTONDBLCLK:
-                        if (isMinimized) {
-                            ShowWindow(hWnd, SW_SHOWNORMAL);
-                            isMinimized = FALSE;
-                        }
-                        else {
-                            NOTIFYICONDATA ntdata;
-                            ntdata.cbSize = sizeof(NOTIFYICONDATA);
-                            ntdata.hWnd = hWnd;
-                            ntdata.uID = 12;//идентификатор пиктограммы на панели задач
-                            ntdata.uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
-                            ntdata.uCallbackMessage = UCALLBACKMESSAGE;
-                            ntdata.hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
-                            wcscpy_s(ntdata.szTip, _T("muptime"));
-                            Shell_NotifyIcon(NIM_ADD, &ntdata);
-                            ShowWindow(hWnd, SW_HIDE);
-                            isMinimized = TRUE;
-                        }
+                        if (isMinimized)
+                            SendMessage(hWnd, WM_SIZE, SIZE_MAXIMIZED, NULL);
+                        else
+                            SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
                         break;
+                    //или копипастим аптайм
                     case WM_RBUTTONUP:
                         getUptimeStr(time);
                         copyTextToClipboard(hWnd, time);
+                        break;
+                    //или выходим
+                    case WM_MBUTTONUP:
+                        SendMessage(hWnd, WM_DESTROY, wparam, lparam);
                         break;
                 }
             }
             break;
         case WM_QUIT:
-            {
-                NOTIFYICONDATA ntdata;
-                ntdata.cbSize = sizeof(NOTIFYICONDATA);
-                ntdata.hWnd = hWnd;
-                ntdata.uID = 12;//идентификатор пиктограммы на панели задач
-                ntdata.uFlags = NIF_MESSAGE;
-                ntdata.uCallbackMessage = UCALLBACKMESSAGE;
-                Shell_NotifyIcon(NIM_DELETE, &ntdata);
-            }
-            
+            //при выходе - ничего не делаем О.о?            
             break;
         default:
             return DefWindowProc(hWnd, message, wparam, lparam);
@@ -215,6 +212,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
 }
 
 wchar_t* getUptimeStr(wchar_t* dst) {
+    //форматируем/заполняем строку аптаймом в формате dd:hh:mm:ss
     long milliseconds = GetTickCount();
     long days = milliseconds / 86400000;
     milliseconds -= days * 86400000;
@@ -252,6 +250,7 @@ wchar_t* getUptimeStr(wchar_t* dst) {
 }
 
 void setFont(LOGFONT *lg) {
+    //создаем шрифт
     const wchar_t strName[] = _T("SomeUptimeFont");
     lg->lfHeight = 14;
     lg->lfWidth  = 8;
