@@ -2,7 +2,7 @@
  * (c) Muhamed Karanashev, 2008
  */
 #define _CRT_SECURE_NO_WARNINGS
-
+#define _UNICODE
 #include <windows.h>
 #include <tchar.h>
 #include "resource.h"
@@ -11,8 +11,8 @@
 #define UCALLBACKMESSAGE 0x1001
 #define PICTOID 1025
 
-static TCHAR szWindowClass[] = _T("uptimeAppClass");
-static TCHAR szTitle[] = _T("muptime");
+static wchar_t szWindowClass[] = _T("uptimeAppClass");
+static wchar_t szTitle[] = _T("muptime");
 static BOOL isMinimized = FALSE;
 static UINT POS_X = 0;
 static UINT POS_Y = 48;
@@ -20,11 +20,11 @@ static wchar_t iniFile[MAX_PATH];
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 wchar_t* getUptimeStr(wchar_t*);
-void setFont(LOGFONT*);
+void setFont(LOGFONTW*);
 void copyTextToClipboard(HWND, wchar_t*);
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmdShow) {
-    WNDCLASSEX wnd;
+    WNDCLASSEXW wnd;
     wnd.cbSize = sizeof(WNDCLASSEX);
     wnd.style  = CS_HREDRAW | CS_VREDRAW;
     wnd.lpfnWndProc = WndProc;
@@ -35,21 +35,21 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     wnd.hCursor = LoadCursor(NULL, IDC_ARROW);
     wnd.hbrBackground = (HBRUSH) (COLOR_WINDOW+1);
     wnd.lpszMenuName = NULL;
-    wnd.lpszClassName = szWindowClass;
+    wnd.lpszClassName = _T("uptimeAppClass");
     wnd.hIconSm = LoadIcon(wnd.hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
-    if (!RegisterClassEx(&wnd)) {
+    if (!RegisterClassExW(&wnd)) {
         MessageBoxW(NULL,
-            L"Ошибка вызова RegisterClassEx!",
-            L"muptime",
+            _T("РћС€РёР±РєР° RegisterClassEx!"),
+            _T("muptime"),
             NULL);
         return 1;
     }
-    //читаем настройки из muptime.ini
-    GetCurrentDirectory(MAX_PATH, iniFile);
-    wcscat_s(iniFile, _T("\\muptime.ini"));
-    POS_X = GetPrivateProfileInt(_T("Position"), _T("X"), POS_X, iniFile);
-    POS_Y = GetPrivateProfileInt(_T("Position"), _T("Y"), POS_Y, iniFile);
-    HWND hWnd = CreateWindowEx(
+    //С‡РёС‚Р°РµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· muptime.ini
+    GetCurrentDirectoryW(MAX_PATH, iniFile);
+    wcscat(iniFile, _T("\\muptime.ini"));
+    POS_X = GetPrivateProfileIntW(_T("Position"), _T("X"), POS_X, iniFile);
+    POS_Y = GetPrivateProfileIntW(_T("Position"), _T("Y"), POS_Y, iniFile);
+    HWND hWnd = CreateWindowExW(
         WS_EX_TOOLWINDOW,
         szWindowClass,
         szTitle,
@@ -62,27 +62,27 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
         NULL);
     if (!hWnd) {
         MessageBoxW(NULL,
-            L"Ошибка вызова CreateWindow",
-            L"muptime",
+            _T("РћС€РёР±РєР° CreateWindowEx"),
+            _T("muptime"),
             NULL);
         return 1;
     }
     SetWindowPos(hWnd, HWND_TOPMOST, POS_X, POS_Y, 0, 0, SWP_NOSIZE);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
+
+    NOTIFYICONDATA* ntdata = new NOTIFYICONDATA;
+    ntdata->cbSize = sizeof(NOTIFYICONDATA);
+    ntdata->hWnd = hWnd;
+    ntdata->uID = PICTOID;//РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРёРєС‚РѕРіСЂР°РјРјС‹ РЅР° РїР°РЅРµР»Рё Р·Р°РґР°С‡
+    ntdata->uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
+    ntdata->uCallbackMessage = UCALLBACKMESSAGE;
+    ntdata->hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
+    strcpy(ntdata->szTip, "muptime");
+    Shell_NotifyIcon(NIM_ADD, ntdata);
+    delete ntdata;
+
     MSG msg;
-    {
-        NOTIFYICONDATA* ntdata = new NOTIFYICONDATA;
-        ntdata->cbSize = sizeof(NOTIFYICONDATA);
-        ntdata->hWnd = hWnd;
-        ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
-        ntdata->uFlags = NIF_MESSAGE | NIF_INFO | NIF_ICON;
-        ntdata->uCallbackMessage = UCALLBACKMESSAGE;
-        ntdata->hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
-        wcscpy_s(ntdata->szTip, _T("muptime"));
-        Shell_NotifyIcon(NIM_ADD, ntdata);
-        delete ntdata;
-    }
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -93,16 +93,16 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) {
     const UINT_PTR IDT_TIMER1 = 1;
     wchar_t *time = new wchar_t[16];
-    LOGFONT lg;
+    LOGFONTW lg;
     HFONT fnt;
     PAINTSTRUCT ps;
     HDC hdc;
     switch(message) {
         case WM_PAINT:
-            //при перерисовке: отображаем текущий аптайм
+            //РїСЂРё РїРµСЂРµСЂРёСЃРѕРІРєРµ: РѕС‚РѕР±СЂР°Р¶Р°РµРј С‚РµРєСѓС‰РёР№ Р°РїС‚Р°Р№Рј
             hdc = BeginPaint(hWnd, &ps);
             setFont(&lg);
-            fnt = CreateFontIndirect(&lg);
+            fnt = CreateFontIndirectW(&lg);
             SelectObject(hdc, fnt);
             getUptimeStr(time);
             TextOutW(hdc, 3, 3, time, wcslen(time));
@@ -110,26 +110,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             DeleteObject(fnt);
             break;
         case WM_CREATE:
-            //при создании: ставим таймер на обновление аптайма
+            //РїСЂРё СЃРѕР·РґР°РЅРёРё: СЃС‚Р°РІРёРј С‚Р°Р№РјРµСЂ РЅР° РѕР±РЅРѕРІР»РµРЅРёРµ Р°РїС‚Р°Р№РјР°
             SetTimer(hWnd, IDT_TIMER1, 1000, (TIMERPROC)NULL);
             break;
         case WM_DESTROY:
-            //при выходе: сохраняем текущее положение окна, чистим трей, убиваем таймер и уходим
+            //РїСЂРё РІС‹С…РѕРґРµ: СЃРѕС…СЂР°РЅСЏРµРј С‚РµРєСѓС‰РµРµ РїРѕР»РѕР¶РµРЅРёРµ РѕРєРЅР°, С‡РёСЃС‚РёРј С‚СЂРµР№, СѓР±РёРІР°РµРј С‚Р°Р№РјРµСЂ Рё СѓС…РѕРґРёРј
             {
                 LPRECT rect = new tagRECT;
                 GetWindowRect(hWnd, rect);
                 wchar_t x_pos[4];
                 wchar_t y_pos[4];
-                _ltow_s(rect->left, x_pos, 4, 10);
-                _ltow_s(rect->top, y_pos, 4, 10);
-                WritePrivateProfileString(_T("Position"), _T("X"), x_pos, iniFile);
-                WritePrivateProfileString(_T("Position"), _T("Y"), y_pos, iniFile);
+                _ltow(rect->left, x_pos, 10);
+                _ltow(rect->top, y_pos, 10);
+                WritePrivateProfileStringW(_T("Position"), _T("X"), x_pos, iniFile);
+                WritePrivateProfileStringW(_T("Position"), _T("Y"), y_pos, iniFile);
                 delete rect;
 
                 NOTIFYICONDATA *ntdata = new NOTIFYICONDATA;
                 ntdata->cbSize = sizeof(NOTIFYICONDATA);
                 ntdata->hWnd = hWnd;
-                ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
+                ntdata->uID = PICTOID;//РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїРёРєС‚РѕРіСЂР°РјРјС‹ РЅР° РїР°РЅРµР»Рё Р·Р°РґР°С‡
                 Shell_NotifyIcon(NIM_DELETE, ntdata);
                 delete ntdata;
             }
@@ -137,10 +137,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             PostQuitMessage(0);
             break;
         case WM_TIMER:
-            //при тике таймера: обновляем и отображаем аптайм
+            //РїСЂРё С‚РёРєРµ С‚Р°Р№РјРµСЂР°: РѕР±РЅРѕРІР»СЏРµРј Рё РѕС‚РѕР±СЂР°Р¶Р°РµРј Р°РїС‚Р°Р№Рј
             hdc = GetDC(hWnd);
             setFont(&lg);
-            fnt = CreateFontIndirect(&lg);
+            fnt = CreateFontIndirectW(&lg);
             SelectObject(hdc, fnt);
             getUptimeStr(time);
             TextOutW(hdc, 3, 3, time, wcslen(time));
@@ -148,27 +148,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             ReleaseDC(hWnd, hdc);
             break;
         case WM_CHAR:
-            //обрабатываем нажатия на клавиатуру
+            //РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј РЅР°Р¶Р°С‚РёСЏ РЅР° РєР»Р°РІРёР°С‚СѓСЂСѓ
             if (wparam == 27)
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
             if (wparam = 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
             break;
         case WM_LBUTTONDOWN:
-            //перетаскиваем окно программы левой кнопкой
+            //РїРµСЂРµС‚Р°СЃРєРёРІР°РµРј РѕРєРЅРѕ РїСЂРѕРіСЂР°РјРјС‹ Р»РµРІРѕР№ РєРЅРѕРїРєРѕР№
             SendMessage(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, NULL);
             break;
         case WM_RBUTTONUP:
-            //копипастим текст по нажатию правой кнопки
+            //РєРѕРїРёРїР°СЃС‚РёРј С‚РµРєСЃС‚ РїРѕ РЅР°Р¶Р°С‚РёСЋ РїСЂР°РІРѕР№ РєРЅРѕРїРєРё
             getUptimeStr(time);
             copyTextToClipboard(hWnd, time);
             break;
         case WM_MBUTTONUP:
-            //выходим по клику средней кнопкой
+            //РІС‹С…РѕРґРёРј РїРѕ РєР»РёРєСѓ СЃСЂРµРґРЅРµР№ РєРЅРѕРїРєРѕР№
             SendMessage(hWnd, WM_DESTROY, wparam, lparam);
             break;
         case WM_SIZE:
-            //при приходе сообщения о ресайзинге (от обработчика в трее) - изменяем окно окно
+            //РїСЂРё РїСЂРёС…РѕРґРµ СЃРѕРѕР±С‰РµРЅРёСЏ Рѕ СЂРµСЃР°Р№Р·РёРЅРіРµ (РѕС‚ РѕР±СЂР°Р±РѕС‚С‡РёРєР° РІ С‚СЂРµРµ) - РёР·РјРµРЅСЏРµРј РѕРєРЅРѕ РѕРєРЅРѕ
             if (wparam == SIZE_MINIMIZED) {
                 ShowWindow(hWnd, SW_HIDE);
                 isMinimized = TRUE;
@@ -180,7 +180,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             break;
         case UCALLBACKMESSAGE:
             if (wparam == PICTOID) {
-                //приходит сообщение от обработчика в трее - проверяем и восстанавливаем/сворачиваем окно
+                //РїСЂРёС…РѕРґРёС‚ СЃРѕРѕР±С‰РµРЅРёРµ РѕС‚ РѕР±СЂР°Р±РѕС‚С‡РёРєР° РІ С‚СЂРµРµ - РїСЂРѕРІРµСЂСЏРµРј Рё РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј/СЃРІРѕСЂР°С‡РёРІР°РµРј РѕРєРЅРѕ
                 switch (lparam) {
                     case WM_LBUTTONDBLCLK:
                         if (isMinimized)
@@ -188,12 +188,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                         else
                             SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
                         break;
-                    //или копипастим аптайм
+                    //РёР»Рё РєРѕРїРёРїР°СЃС‚РёРј Р°РїС‚Р°Р№Рј
                     case WM_RBUTTONUP:
                         getUptimeStr(time);
                         copyTextToClipboard(hWnd, time);
                         break;
-                    //или выходим
+                    //РёР»Рё РІС‹С…РѕРґРёРј
                     case WM_MBUTTONUP:
                         SendMessage(hWnd, WM_DESTROY, wparam, lparam);
                         break;
@@ -201,7 +201,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             }
             break;
         case WM_QUIT:
-            //при выходе - ничего не делаем О.о?            
+            //РїСЂРё РІС‹С…РѕРґРµ - РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµРј Рћ.Рѕ?
             break;
         default:
             return DefWindowProc(hWnd, message, wparam, lparam);
@@ -212,7 +212,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
 }
 
 wchar_t* getUptimeStr(wchar_t* dst) {
-    //форматируем/заполняем строку аптаймом в формате dd:hh:mm:ss
+    //С„РѕСЂРјР°С‚РёСЂСѓРµРј/Р·Р°РїРѕР»РЅСЏРµРј СЃС‚СЂРѕРєСѓ Р°РїС‚Р°Р№РјРѕРј РІ С„РѕСЂРјР°С‚Рµ dd:hh:mm:ss
     long milliseconds = GetTickCount();
     long days = milliseconds / 86400000;
     milliseconds -= days * 86400000;
@@ -221,7 +221,7 @@ wchar_t* getUptimeStr(wchar_t* dst) {
     long minutes = milliseconds / 60000;
     milliseconds -= minutes * 60000;
     long seconds = milliseconds / 1000;
-    
+
     wchar_t* time = new wchar_t[16];
     memset(time, 0, 16);
 
@@ -249,8 +249,8 @@ wchar_t* getUptimeStr(wchar_t* dst) {
     return dst;
 }
 
-void setFont(LOGFONT *lg) {
-    //создаем шрифт
+void setFont(LOGFONTW *lg) {
+    //СЃРѕР·РґР°РµРј С€СЂРёС„С‚
     const wchar_t strName[] = _T("SomeUptimeFont");
     lg->lfHeight = 14;
     lg->lfWidth  = 8;
@@ -265,11 +265,11 @@ void setFont(LOGFONT *lg) {
     lg->lfClipPrecision = CLIP_DEFAULT_PRECIS;
     lg->lfQuality = PROOF_QUALITY;
     lg->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-    wcscpy_s(lg->lfFaceName, strName);
+    wcscpy(lg->lfFaceName, strName);
 }
 
 void copyTextToClipboard(HWND hWnd, wchar_t* src) {
-    //копируем src в буфер окна hWnd
+    //РєРѕРїРёСЂСѓРµРј src РІ Р±СѓС„РµСЂ РѕРєРЅР° hWnd
     if(OpenClipboard(hWnd)){
         EmptyClipboard();
         SetClipboardData(CF_UNICODETEXT, (HANDLE)src);
