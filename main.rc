@@ -1,9 +1,14 @@
 #include "resource.h"
 // Version
+#define V_FILEVERSION 0,0,7,6
+#define V_FILEVERSION_STR "0.0.7.6\0"
+
+#define V_PRODUCTVERSION 0,0,7,6
+#define V_PRODUCTVERSION_STR "0.0.7.6\0"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,0,7,3
- PRODUCTVERSION 0,0,7,3
+ FILEVERSION V_FILEVERSION
+ PRODUCTVERSION V_PRODUCTVERSION
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -20,12 +25,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Muha"
             VALUE "FileDescription", "Uptime Application"
-            VALUE "FileVersion", "0, 0, 7, 4"
-            VALUE "InternalName", "m_Uptime"
+            VALUE "FileVersion", V_FILEVERSION_STR
+            VALUE "InternalName", "muptime"
             VALUE "LegalCopyright", "Copyright (C) Muha, 2008"
-            VALUE "OriginalFilename", "muptime.exe"
-            VALUE "ProductName", "Uptime"
-            VALUE "ProductVersion", "0, 0, 7, 4"
+            VALUE "OriginalFilename", "mupt_mingw.exe"
+            VALUE "ProductName", "mUptime"
+            VALUE "ProductVersion", V_PRODUCTVERSION_STR
         END
     END
     BLOCK "VarFileInfo"
