@@ -3,6 +3,11 @@
 #include <tchar.h>
 #include <stdio.h>
 
+/**
+ * функция форматирует строку с аптаймом
+ * @param dst строка, в которую записывается аптайм
+ * @return Указатель на результирующую строку
+ */
 wchar_t *getUptimeStr(wchar_t *dst) {
     //форматируем строку с аптаймом
     long milliseconds = GetTickCount();
@@ -20,25 +25,34 @@ wchar_t *getUptimeStr(wchar_t *dst) {
     return dst;
 }
 
+/**
+ * устанавливает параметры нашего шрифты
+ * @param lg указатель на структуру tagFONT, в которую пишем параметры
+ */
 void setFontProperties(LOGFONTW *lg) {
     //создаем шрифт
     const wchar_t strName[] = _T("SomeUptimeFont");
     lg->lfHeight = 14;
-    lg->lfWidth  = 8;
+    lg->lfWidth  = 6;
     lg->lfEscapement = 0;
     lg->lfOrientation = 0;
-    lg->lfWeight = 120;
+    lg->lfWeight = FW_MEDIUM;
     lg->lfItalic = 0;
     lg->lfUnderline = 0;
     lg->lfStrikeOut = 0;
     lg->lfCharSet = ANSI_CHARSET;
-    lg->lfOutPrecision = 0;
+    lg->lfOutPrecision = OUT_STROKE_PRECIS;
     lg->lfClipPrecision = CLIP_DEFAULT_PRECIS;
-    lg->lfQuality = PROOF_QUALITY;
-    lg->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+    lg->lfQuality = ANTIALIASED_QUALITY;
+    lg->lfPitchAndFamily = DEFAULT_PITCH | FF_SWISS;
     wcscpy(lg->lfFaceName, strName);
 }
 
+/**
+ * копирует юникодный текст в буфер обмена
+ * @param hWnd дескриптор окна, в чей буфер обмена копируем
+ * @param src юникодная строка, которую копируем в буфер обмена
+ */
 void copyTextToClipboard(HWND hWnd, wchar_t* src) {
     //копируем src в буфер окна hWnd
     if(OpenClipboard(hWnd)){

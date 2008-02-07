@@ -1,8 +1,10 @@
 /**
- * (c) Muhamed Karanashev, 2008
+ * @author Muhamed Karanashev
  */
 #define _UNICODE
+#define WINVER 0x500
 #include <windows.h>
+#include <winuser.h>
 #include <tchar.h>
 #include "resource.h"
 #include "main.h"
@@ -10,14 +12,14 @@
 #define UCALLBACKMESSAGE 0x1001
 #define PICTOID 1025
 
-static wchar_t szWindowClass[] = _T("uptimeAppClass");
-static wchar_t szTitle[] = _T("muptime");
-static BOOL isMinimized = FALSE;
-static UINT POS_X = 0;
-static UINT POS_Y = 48;
-static wchar_t iniFile[MAX_PATH];
-static LOGFONTW lg;
-static HFONT fnt;
+static wchar_t szWindowClass[] = _T("uptimeAppClass"); /**< имя класса нашего окна */
+static wchar_t szTitle[] = _T("muptime"); /**< заголовок (не нужен) нашего окна */
+static BOOL isMinimized = FALSE; /**< флаг свертки/развертки окна в трей */
+static UINT POS_X = 0; /**< координата окна по умолчанию */
+static UINT POS_Y = 48; /**< координата окна по умолчанию */
+static wchar_t iniFile[MAX_PATH]; /**< имя файла настроек (надо сделать локальной переменной) */
+static LOGFONTW lg; /**< указатель на структуру с параметрами нашего шрифта*/
+static HFONT fnt; /**< дескриптор нашего шрифта*/
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -31,7 +33,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     wnd.hInstance   = hInst;
     wnd.hIcon  = LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON1));
     wnd.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wnd.hbrBackground = (HBRUSH) (COLOR_WINDOW+1);
+    wnd.hbrBackground = (HBRUSH) (COLOR_WINDOWFRAME);
     wnd.lpszMenuName = NULL;
     wnd.lpszClassName = _T("uptimeAppClass");
     wnd.hIconSm = LoadIcon(wnd.hInstance, MAKEINTRESOURCE(IDI_APPLICATION));
@@ -53,7 +55,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
         szTitle,
         WS_POPUP | WS_DLGFRAME,
         POS_X, POS_Y,
-        96, 25,
+        78, 22,
         NULL,
         NULL,
         hInst,
@@ -68,7 +70,10 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     //устанавливаем шрифт
     setFontProperties(&lg);
     fnt = CreateFontIndirectW(&lg);
-    //ставим окно поверх всех
+
+    SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+    SetLayeredWindowAttributes(hWnd, COLOR_WINDOW+1 , 0, LWA_COLORKEY);
+
     SetWindowPos(hWnd, HWND_TOPMOST, POS_X, POS_Y, 0, 0, SWP_NOSIZE);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
@@ -102,7 +107,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             hdc = BeginPaint(hWnd, &ps);
             SelectObject(hdc, fnt);
             getUptimeStr(time);
-            TextOutW(hdc, 3, 3, time, wcslen(time));
+            TextOutW(hdc, 3, 1, time, wcslen(time));
             EndPaint(hWnd, &ps);
             break;
         case WM_CREATE:
@@ -137,12 +142,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             hdc = GetDC(hWnd);
             SelectObject(hdc, fnt);
             getUptimeStr(time);
-            TextOutW(hdc, 3, 3, time, wcslen(time));
+            TextOutW(hdc, 3, 1, time, wcslen(time));
             ReleaseDC(hWnd, hdc);
             break;
-        case WM_CHAR:
+        case WM_KEYDOWN:
             //обрабатываем нажатия на клавиатуру
-            if (wparam == 27)
+            if (wparam == VK_ESCAPE)
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
             if (wparam == 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
@@ -194,6 +199,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             }
             break;
         case WM_QUIT:
+        //при выходе чистим за собой - удаляем шрифт
             DeleteObject(fnt);
             break;
         default:
