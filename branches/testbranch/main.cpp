@@ -17,6 +17,8 @@ static wchar_t szTitle[] = _T("muptime"); /**< заголовок (не нуже
 static BOOL isMinimized = FALSE; /**< флаг свертки/развертки окна в трей */
 static UINT POS_X = 0; /**< координата окна по умолчанию */
 static UINT POS_Y = 48; /**< координата окна по умолчанию */
+static UINT HEIGHT = 22; /**< высота окна */
+static UINT WIDTH = 78; /**< ширина окна */
 static wchar_t iniFile[MAX_PATH]; /**< имя файла настроек (надо сделать локальной переменной) */
 static LOGFONTW lg; /**< указатель на структуру с параметрами нашего шрифта*/
 static HFONT fnt; /**< дескриптор нашего шрифта*/
@@ -49,13 +51,15 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     wcscat(iniFile, _T("\\muptime.ini"));
     POS_X = GetPrivateProfileIntW(_T("Position"), _T("X"), POS_X, iniFile);
     POS_Y = GetPrivateProfileIntW(_T("Position"), _T("Y"), POS_Y, iniFile);
+    WIDTH = GetPrivateProfileIntW(_T("Size"), _T("Width"), WIDTH, iniFile);
+    HEIGHT = GetPrivateProfileIntW(_T("Size"), _T("Height"), HEIGHT, iniFile);
     HWND hWnd = CreateWindowExW(
         WS_EX_TOOLWINDOW,
         szWindowClass,
         szTitle,
         WS_POPUP | WS_DLGFRAME,
         POS_X, POS_Y,
-        78, 22,
+        WIDTH, HEIGHT,
         NULL,
         NULL,
         hInst,
@@ -71,8 +75,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     setFontProperties(&lg);
     fnt = CreateFontIndirectW(&lg);
 
-    SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-    SetLayeredWindowAttributes(hWnd, COLOR_WINDOW+1 , 0, LWA_COLORKEY);
+    //SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+    //SetLayeredWindowAttributes(hWnd, COLOR_WINDOW+1 , 0, LWA_COLORKEY);
 
     SetWindowPos(hWnd, HWND_TOPMOST, POS_X, POS_Y, 0, 0, SWP_NOSIZE);
     ShowWindow(hWnd, nCmdShow);
@@ -102,14 +106,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
     PAINTSTRUCT ps;
     HDC hdc;
     switch(message) {
-        case WM_PAINT:
+        case WM_PAINT:{
             //при перерисовке: отображаем текущий аптайм
             hdc = BeginPaint(hWnd, &ps);
             SelectObject(hdc, fnt);
             getUptimeStr(time);
-            TextOutW(hdc, 3, 1, time, wcslen(time));
+            drawUptime(hdc, time, WIDTH, HEIGHT);
+            //TextOutW(hdc, 3, 1, time, wcslen(time));
             EndPaint(hWnd, &ps);
-            break;
+            break;}
         case WM_CREATE:
             //при создании: ставим таймер на обновление аптайма
             SetTimer(hWnd, IDT_TIMER1, 1000, (TIMERPROC)NULL);
@@ -119,12 +124,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             {
                 LPRECT rect = new tagRECT;
                 GetWindowRect(hWnd, rect);
-                wchar_t x_pos[4];
-                wchar_t y_pos[4];
-                _ltow(rect->left, x_pos, 10);
-                _ltow(rect->top, y_pos, 10);
-                WritePrivateProfileStringW(_T("Position"), _T("X"), x_pos, iniFile);
-                WritePrivateProfileStringW(_T("Position"), _T("Y"), y_pos, iniFile);
+                wchar_t pos_x[4];
+                wchar_t pos_y[4];
+                wchar_t width[4];
+                wchar_t height[4];
+                _ltow(rect->left, pos_x, 10);
+                _ltow(rect->top, pos_y, 10);
+                _ltow(WIDTH, width, 10);
+                _ltow(HEIGHT, height, 10);
+                WritePrivateProfileStringW(_T("Position"), _T("X"), pos_x, iniFile);
+                WritePrivateProfileStringW(_T("Position"), _T("Y"), pos_y, iniFile);
+                WritePrivateProfileStringW(_T("Size"), _T("Width"), width, iniFile);
+                WritePrivateProfileStringW(_T("Size"), _T("Height"), height, iniFile);
                 delete rect;
 
                 NOTIFYICONDATA *ntdata = new NOTIFYICONDATA;
@@ -137,14 +148,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             KillTimer(hWnd, IDT_TIMER1);
             PostQuitMessage(0);
             break;
-        case WM_TIMER:
+        case WM_TIMER:{
             //при тике таймера: обновляем и отображаем аптайм
             hdc = GetDC(hWnd);
             SelectObject(hdc, fnt);
             getUptimeStr(time);
-            TextOutW(hdc, 3, 1, time, wcslen(time));
+            //TextOutW(hdc, 3, 1, time, wcslen(time));
+            drawUptime(hdc, time, WIDTH, HEIGHT);
             ReleaseDC(hWnd, hdc);
-            break;
+            break;}
         case WM_KEYDOWN:
             //обрабатываем нажатия на клавиатуру
             if (wparam == VK_ESCAPE)
