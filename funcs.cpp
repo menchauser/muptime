@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <tchar.h>
 #include <stdio.h>
+#include "main.h"
 
 /**
  * функция форматирует строку с аптаймом
@@ -60,4 +61,20 @@ void copyTextToClipboard(HWND hWnd, wchar_t* src) {
         SetClipboardData(CF_UNICODETEXT, (HANDLE)src);
         CloseClipboard();
     }
+}
+
+/**
+ * выводит аптайм в устройство с заданным контекстом
+ * @param hdc контекст устройства вывода
+ * @param uptime строка с аптаймом
+ * @return результат функции DrawTextW
+ */
+int drawUptime(HDC hdc, wchar_t *uptime, UINT width, UINT height) {
+    LPRECT rect = new tagRECT;
+    rect->left = 1;
+    rect->top = 1;
+    rect->right = width - 8;
+    rect->bottom = height - 8;
+    return DrawTextW(hdc, uptime, wcslen(uptime), rect, DT_VCENTER | DT_SINGLELINE | DT_CENTER);
+    delete rect;
 }
