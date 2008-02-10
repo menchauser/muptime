@@ -86,15 +86,15 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     UpdateWindow(hWnd);
     //прячемся в трей
     {
-        auto_ptr<NOTIFYICONDATA> ntdata(new NOTIFYICONDATA);
+        auto_ptr<NOTIFYICONDATAW> ntdata(new NOTIFYICONDATAW);
         ntdata->cbSize = sizeof(NOTIFYICONDATA);
         ntdata->hWnd = hWnd;
         ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
         ntdata->uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
         ntdata->uCallbackMessage = UCALLBACKMESSAGE;
         ntdata->hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
-        strcpy(ntdata->szTip, "muptime");
-        Shell_NotifyIcon(NIM_ADD, ntdata.get());
+        wcscpy(ntdata->szTip, L"µptime");
+        Shell_NotifyIconW(NIM_ADD, ntdata.get());
     }
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
@@ -183,7 +183,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             break;
         case WM_SIZE:
             //при приходе сообщения о ресайзинге (от обработчика в трее) - изменяем окно окно
-            switch (wparam == SIZE_MINIMIZED) {
+            switch (wparam) {
                 case SIZE_MINIMIZED:
                     ShowWindow(hWnd, SW_HIDE);
                     isMinimized = TRUE;
