@@ -3,6 +3,9 @@
 #include <tchar.h>
 #include <stdio.h>
 #include "main.h"
+#include <memory>
+using namespace std;
+// TODO (Muhamed#1#): установить везде поддержку auto_ptr
 
 /**
  * функция форматирует строку с аптаймом
@@ -19,10 +22,9 @@ wchar_t *getUptimeStr(wchar_t *dst) {
     long minutes = milliseconds / 60000;
     milliseconds -= minutes * 60000;
     long seconds = milliseconds / 1000;
-    wchar_t* time = new wchar_t[16];
-    swprintf(time, _T("%02ld:%02ld:%02ld:%02ld"), days, hours, minutes, seconds);
-    wcsncpy(dst, time, 16);
-    delete[] time;
+    auto_ptr<wchar_t> time(new wchar_t[16]);
+    swprintf(time.get(), _T("%02ld:%02ld:%02ld:%02ld"), days, hours, minutes, seconds);
+    wcsncpy(dst, time.get(), 16);
     return dst;
 }
 
@@ -75,6 +77,7 @@ int drawUptime(HDC hdc, wchar_t *uptime, UINT width, UINT height) {
     rect->top = 1;
     rect->right = width - 8;
     rect->bottom = height - 8;
+    //SetBkMode(hdc, TRANSPARENT);
     return DrawTextW(hdc, uptime, wcslen(uptime), rect, DT_VCENTER | DT_SINGLELINE | DT_CENTER);
     delete rect;
 }

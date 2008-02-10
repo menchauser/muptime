@@ -8,6 +8,9 @@
 #include <tchar.h>
 #include "resource.h"
 #include "main.h"
+#include <memory>
+using namespace std;
+// TODO (Muhamed#1#): установить везде поддержку auto_ptr
 
 #define UCALLBACKMESSAGE 0x1001
 #define PICTOID 1025
@@ -75,23 +78,24 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
     setFontProperties(&lg);
     fnt = CreateFontIndirectW(&lg);
 
-    //SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
-    //SetLayeredWindowAttributes(hWnd, COLOR_WINDOW+1 , 0, LWA_COLORKEY);
+//    SetWindowLong(hWnd, GWL_EXSTYLE, GetWindowLong(hWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+//    SetLayeredWindowAttributes(hWnd, RGB(0xff, 0xff, 0xff) , 0, LWA_COLORKEY);
 
     SetWindowPos(hWnd, HWND_TOPMOST, POS_X, POS_Y, 0, 0, SWP_NOSIZE);
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
     //прячемся в трей
-    NOTIFYICONDATA* ntdata = new NOTIFYICONDATA;
-    ntdata->cbSize = sizeof(NOTIFYICONDATA);
-    ntdata->hWnd = hWnd;
-    ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
-    ntdata->uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
-    ntdata->uCallbackMessage = UCALLBACKMESSAGE;
-    ntdata->hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
-    strcpy(ntdata->szTip, "muptime");
-    Shell_NotifyIcon(NIM_ADD, ntdata);
-    delete ntdata;
+    {
+        auto_ptr<NOTIFYICONDATA> ntdata(new NOTIFYICONDATA);
+        ntdata->cbSize = sizeof(NOTIFYICONDATA);
+        ntdata->hWnd = hWnd;
+        ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
+        ntdata->uFlags = NIF_MESSAGE | NIF_TIP | NIF_ICON;
+        ntdata->uCallbackMessage = UCALLBACKMESSAGE;
+        ntdata->hIcon = LoadIconA(GetModuleHandleA(NULL),MAKEINTRESOURCEA(IDI_ICON1));
+        strcpy(ntdata->szTip, "muptime");
+        Shell_NotifyIcon(NIM_ADD, ntdata.get());
+    }
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
@@ -102,7 +106,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) {
     const UINT_PTR IDT_TIMER1 = 1;
-    wchar_t *time = new wchar_t[16];
+    auto_ptr<wchar_t> time(new wchar_t[16]);
     PAINTSTRUCT ps;
     HDC hdc;
     switch(message) {
@@ -110,9 +114,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             //при перерисовке: отображаем текущий аптайм
             hdc = BeginPaint(hWnd, &ps);
             SelectObject(hdc, fnt);
-            getUptimeStr(time);
-            drawUptime(hdc, time, WIDTH, HEIGHT);
-            //TextOutW(hdc, 3, 1, time, wcslen(time));
+            getUptimeStr(time.get());
+            drawUptime(hdc, time.get(), WIDTH, HEIGHT);
             EndPaint(hWnd, &ps);
             break;}
         case WM_CREATE:
@@ -122,8 +125,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case WM_DESTROY:
             //при выходе: сохраняем текущее положение окна, чистим трей, убиваем таймер и уходим
             {
-                LPRECT rect = new tagRECT;
-                GetWindowRect(hWnd, rect);
+                auto_ptr<tagRECT> rect(new tagRECT);
+                GetWindowRect(hWnd, rect.get());
                 wchar_t pos_x[4];
                 wchar_t pos_y[4];
                 wchar_t width[4];
@@ -136,14 +139,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                 WritePrivateProfileStringW(_T("Position"), _T("Y"), pos_y, iniFile);
                 WritePrivateProfileStringW(_T("Size"), _T("Width"), width, iniFile);
                 WritePrivateProfileStringW(_T("Size"), _T("Height"), height, iniFile);
-                delete rect;
 
-                NOTIFYICONDATA *ntdata = new NOTIFYICONDATA;
+                auto_ptr<NOTIFYICONDATA> ntdata(new NOTIFYICONDATA);
                 ntdata->cbSize = sizeof(NOTIFYICONDATA);
                 ntdata->hWnd = hWnd;
                 ntdata->uID = PICTOID;//идентификатор пиктограммы на панели задач
-                Shell_NotifyIcon(NIM_DELETE, ntdata);
-                delete ntdata;
+                Shell_NotifyIcon(NIM_DELETE, ntdata.get());
             }
             KillTimer(hWnd, IDT_TIMER1);
             PostQuitMessage(0);
@@ -152,9 +153,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             //при тике таймера: обновляем и отображаем аптайм
             hdc = GetDC(hWnd);
             SelectObject(hdc, fnt);
-            getUptimeStr(time);
-            //TextOutW(hdc, 3, 1, time, wcslen(time));
-            drawUptime(hdc, time, WIDTH, HEIGHT);
+            getUptimeStr(time.get());
+            drawUptime(hdc, time.get(), WIDTH, HEIGHT);
             ReleaseDC(hWnd, hdc);
             break;}
         case WM_KEYDOWN:
@@ -163,6 +163,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
             if (wparam == 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
+            if (wparam == 'c' || wparam == 'C') {
+                getUptimeStr(time.get());
+                copyTextToClipboard(hWnd, time.get());
+            }
             break;
         case WM_LBUTTONDOWN:
             //перетаскиваем окно программы левой кнопкой
@@ -170,8 +174,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             break;
         case WM_RBUTTONUP:
             //копипастим текст по нажатию правой кнопки
-            getUptimeStr(time);
-            copyTextToClipboard(hWnd, time);
+            getUptimeStr(time.get());
+            copyTextToClipboard(hWnd, time.get());
             break;
         case WM_MBUTTONUP:
             //выходим по клику средней кнопкой
@@ -179,15 +183,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             break;
         case WM_SIZE:
             //при приходе сообщения о ресайзинге (от обработчика в трее) - изменяем окно окно
-            if (wparam == SIZE_MINIMIZED) {
-                ShowWindow(hWnd, SW_HIDE);
-                isMinimized = TRUE;
+            switch (wparam == SIZE_MINIMIZED) {
+                case SIZE_MINIMIZED:
+                    ShowWindow(hWnd, SW_HIDE);
+                    isMinimized = TRUE;
+                    break;
+                case SIZE_MAXIMIZED:
+                    ShowWindow(hWnd, SW_SHOWNORMAL);
+                    isMinimized = FALSE;
+                    break;
+                default:
+                    break;
             }
-            if (wparam == SIZE_MAXIMIZED) {
-                ShowWindow(hWnd, SW_SHOWNORMAL);
-                isMinimized = FALSE;
-            }
-            break;
         case UCALLBACKMESSAGE:
             if (wparam == PICTOID) {
                 //приходит сообщение от обработчика в трее - проверяем и восстанавливаем/сворачиваем окно
@@ -200,12 +207,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                         break;
                     //или копипастим аптайм
                     case WM_RBUTTONUP:
-                        getUptimeStr(time);
-                        copyTextToClipboard(hWnd, time);
+                        getUptimeStr(time.get());
+                        copyTextToClipboard(hWnd, time.get());
                         break;
                     //или выходим
                     case WM_MBUTTONUP:
                         SendMessage(hWnd, WM_DESTROY, wparam, lparam);
+                        break;
+                    default:
                         break;
                 }
             }
@@ -218,6 +227,5 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             return DefWindowProc(hWnd, message, wparam, lparam);
             break;
     }
-    delete[] time;
     return 0;
 }
