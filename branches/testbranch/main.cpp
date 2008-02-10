@@ -106,18 +106,21 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmd
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) {
     const UINT_PTR IDT_TIMER1 = 1;
-    auto_ptr<wchar_t> time(new wchar_t[16]);
+
     PAINTSTRUCT ps;
     HDC hdc;
     switch(message) {
-        case WM_PAINT:{
-            //при перерисовке: отображаем текущий аптайм
-            hdc = BeginPaint(hWnd, &ps);
-            SelectObject(hdc, fnt);
-            getUptimeStr(time.get());
-            drawUptime(hdc, time.get(), WIDTH, HEIGHT);
-            EndPaint(hWnd, &ps);
-            break;}
+        case WM_PAINT:
+            {
+                //при перерисовке: отображаем текущий аптайм
+                auto_ptr<wchar_t> time(new wchar_t[16]);
+                hdc = BeginPaint(hWnd, &ps);
+                SelectObject(hdc, fnt);
+                getUptimeStr(time.get());
+                drawUptime(hdc, time.get(), WIDTH, HEIGHT);
+                EndPaint(hWnd, &ps);
+            }
+            break;
         case WM_CREATE:
             //при создании: ставим таймер на обновление аптайма
             SetTimer(hWnd, IDT_TIMER1, 1000, (TIMERPROC)NULL);
@@ -149,14 +152,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             KillTimer(hWnd, IDT_TIMER1);
             PostQuitMessage(0);
             break;
-        case WM_TIMER:{
-            //при тике таймера: обновляем и отображаем аптайм
-            hdc = GetDC(hWnd);
-            SelectObject(hdc, fnt);
-            getUptimeStr(time.get());
-            drawUptime(hdc, time.get(), WIDTH, HEIGHT);
-            ReleaseDC(hWnd, hdc);
-            break;}
+        case WM_TIMER:
+            {
+                //при тике таймера: обновляем и отображаем аптайм
+                auto_ptr<wchar_t> time(new wchar_t[16]);
+                hdc = GetDC(hWnd);
+                SelectObject(hdc, fnt);
+                getUptimeStr(time.get());
+                drawUptime(hdc, time.get(), WIDTH, HEIGHT);
+                ReleaseDC(hWnd, hdc);
+            }
+            break;
         case WM_KEYDOWN:
             //обрабатываем нажатия на клавиатуру
             if (wparam == VK_ESCAPE)
@@ -164,6 +170,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             if (wparam == 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
             if (wparam == 'c' || wparam == 'C') {
+                auto_ptr<wchar_t> time(new wchar_t[16]);
                 getUptimeStr(time.get());
                 copyTextToClipboard(hWnd, time.get());
             }
@@ -173,9 +180,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             SendMessage(hWnd, WM_NCLBUTTONDOWN, HTCAPTION, NULL);
             break;
         case WM_RBUTTONUP:
-            //копипастим текст по нажатию правой кнопки
-            getUptimeStr(time.get());
-            copyTextToClipboard(hWnd, time.get());
+            {
+                //копипастим текст по нажатию правой кнопки
+                auto_ptr<wchar_t> time(new wchar_t[16]);
+                getUptimeStr(time.get());
+                copyTextToClipboard(hWnd, time.get());
+            }
             break;
         case WM_MBUTTONUP:
             //выходим по клику средней кнопкой
@@ -207,8 +217,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                         break;
                     //или копипастим аптайм
                     case WM_RBUTTONUP:
-                        getUptimeStr(time.get());
-                        copyTextToClipboard(hWnd, time.get());
+                        {
+                            auto_ptr<wchar_t> time(new wchar_t[16]);
+                            getUptimeStr(time.get());
+                            copyTextToClipboard(hWnd, time.get());
+                        }
                         break;
                     //или выходим
                     case WM_MBUTTONUP:
@@ -220,7 +233,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
             }
             break;
         case WM_QUIT:
-        //при выходе чистим за собой - удаляем шрифт
+            //при выходе чистим за собой - удаляем шрифт
             DeleteObject(fnt);
             break;
         default:
