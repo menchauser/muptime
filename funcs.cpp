@@ -56,12 +56,19 @@ void setFontProperties(LOGFONTW *lg) {
  * @param hWnd дескриптор окна, в чей буфер обмена копируем
  * @param src юникодная строка, которую копируем в буфер обмена
  */
-void copyTextToClipboard(HWND hWnd, wchar_t* src) {
+BOOL copyTextToClipboard(HWND hWnd, wchar_t* src) {
     //копируем src в буфер окна hWnd
     if(OpenClipboard(hWnd)){
         EmptyClipboard();
         SetClipboardData(CF_UNICODETEXT, (HANDLE)src);
-        CloseClipboard();
+        if(CloseClipboard()) return TRUE;
+        else {
+            MessageBoxW(NULL,
+                _T("Ошибка CloseClipboard!"),
+                _T("muptime"),
+                NULL);
+            return FALSE;
+        }
     }
 }
 
@@ -77,7 +84,6 @@ int drawUptime(HDC hdc, wchar_t *uptime, UINT width, UINT height) {
     rect->top = 1;
     rect->right = width - 8;
     rect->bottom = height - 8;
-    //SetBkMode(hdc, TRANSPARENT);
     return DrawTextW(hdc, uptime, wcslen(uptime), rect, DT_VCENTER | DT_SINGLELINE | DT_CENTER);
     delete rect;
 }
