@@ -22,9 +22,7 @@ wchar_t *getUptimeStr(wchar_t *dst) {
     long minutes = milliseconds / 60000;
     milliseconds -= minutes * 60000;
     long seconds = milliseconds / 1000;
-    auto_ptr<wchar_t> time(new wchar_t[16]);
-    swprintf(time.get(), _T("%02ld:%02ld:%02ld:%02ld"), days, hours, minutes, seconds);
-    wcsncpy(dst, time.get(), 16);
+    swprintf(dst, _T("%02ld:%02ld:%02ld:%02ld"), days, hours, minutes, seconds);
     return dst;
 }
 
@@ -55,6 +53,7 @@ void setFontProperties(LOGFONTW *lg) {
  * копирует юникодный текст в буфер обмена
  * @param hWnd дескриптор окна, в чей буфер обмена копируем
  * @param src юникодная строка, которую копируем в буфер обмена
+ * @return TRUE, если скопировали и успешно закрыли буфер, FALSE в противном случае.
  */
 BOOL copyTextToClipboard(HWND hWnd, wchar_t* src) {
     //копируем src в буфер окна hWnd
@@ -62,14 +61,9 @@ BOOL copyTextToClipboard(HWND hWnd, wchar_t* src) {
         EmptyClipboard();
         SetClipboardData(CF_UNICODETEXT, (HANDLE)src);
         if(CloseClipboard()) return TRUE;
-        else {
-            MessageBoxW(NULL,
-                _T("Ошибка CloseClipboard!"),
-                _T("muptime"),
-                NULL);
-            return FALSE;
-        }
+        else return FALSE;
     }
+    else return FALSE;
 }
 
 /**
@@ -79,7 +73,7 @@ BOOL copyTextToClipboard(HWND hWnd, wchar_t* src) {
  * @return результат функции DrawTextW
  */
 int drawUptime(HDC hdc, wchar_t *uptime, UINT width, UINT height) {
-    LPRECT rect = new tagRECT;
+    LPRECT rect = new tagRECT; //все же, здесь auto_ptr нах не нужен. почистить остальной код, где auto_ptr не нужен.
     rect->left = 1;
     rect->top = 1;
     rect->right = width - 8;

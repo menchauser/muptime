@@ -10,7 +10,7 @@
 #include "main.h"
 #include <memory>
 using namespace std;
-// TODO (Muhamed#1#): установить везде поддержку auto_ptr
+// TODO (Muhamed#1#): установить везде поддержку auto_ptr (кроме массивов!)
 
 #define UCALLBACKMESSAGE 0x1001
 #define PICTOID 1025
@@ -25,10 +25,15 @@ static UINT WIDTH = 78; /**< ширина окна */
 static wchar_t iniFile[MAX_PATH]; /**< имя файла настроек (надо сделать локальной переменной) */
 static LOGFONTW lg; /**< указатель на структуру с параметрами нашего шрифта*/
 static HFONT fnt; /**< дескриптор нашего шрифта*/
+const wchar_t szMutex[] = _T("uptimeMutex");
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR cmdLine, int nCmdShow) {
+    //создаем мьютекс на случай, если мы уже запущены
+    CreateMutexW(NULL, TRUE, szMutex);
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+        ExitProcess(0);
     WNDCLASSEXW wnd;
     wnd.cbSize = sizeof(WNDCLASSEX);
     wnd.style  = CS_HREDRAW | CS_VREDRAW;
@@ -113,12 +118,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case WM_PAINT:
             {
                 //при перерисовке: отображаем текущий аптайм
-                auto_ptr<wchar_t> time(new wchar_t[16]);
+                wchar_t* time = new wchar_t[16];
                 hdc = BeginPaint(hWnd, &ps);
                 SelectObject(hdc, fnt);
-                getUptimeStr(time.get());
-                drawUptime(hdc, time.get(), WIDTH, HEIGHT);
+                getUptimeStr(time);
+                drawUptime(hdc, time, WIDTH, HEIGHT);
                 EndPaint(hWnd, &ps);
+                delete[] time;
             }
             break;
         case WM_CREATE:
@@ -155,24 +161,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case WM_TIMER:
             {
                 //при тике таймера: обновляем и отображаем аптайм
-                auto_ptr<wchar_t> time(new wchar_t[16]);
+                wchar_t* time = new wchar_t[16];
                 hdc = GetDC(hWnd);
                 SelectObject(hdc, fnt);
-                getUptimeStr(time.get());
-                drawUptime(hdc, time.get(), WIDTH, HEIGHT);
+                getUptimeStr(time);
+                drawUptime(hdc, time, WIDTH, HEIGHT);
                 ReleaseDC(hWnd, hdc);
+                delete[] time;
             }
             break;
         case WM_KEYDOWN:
             //обрабатываем нажатия на клавиатуру
             if (wparam == VK_ESCAPE)
                 SendMessage(hWnd, WM_DESTROY, wparam, lparam);
-            if (wparam == 'q' || wparam == 'Q')
+            else if (wparam == 'q' || wparam == 'Q')
                 SendMessage(hWnd, WM_SIZE, SIZE_MINIMIZED, NULL);
-            if (wparam == 'c' || wparam == 'C') {
-                auto_ptr<wchar_t> time(new wchar_t[16]);
-                getUptimeStr(time.get());
-                copyTextToClipboard(hWnd, time.get());
+            else if (wparam == 'c' || wparam == 'C') {
+                wchar_t* time = new wchar_t[16];
+                getUptimeStr(time);
+                copyTextToClipboard(hWnd, time);
+                delete[] time;
             }
             break;
         case WM_LBUTTONDOWN:
@@ -182,9 +190,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
         case WM_RBUTTONUP:
             {
                 //копипастим текст по нажатию правой кнопки
-                auto_ptr<wchar_t> time(new wchar_t[16]);
-                getUptimeStr(time.get());
-                copyTextToClipboard(hWnd, time.get());
+                wchar_t* time = new wchar_t[16];
+                getUptimeStr(time);
+                copyTextToClipboard(hWnd, time);
+                delete[] time;
             }
             break;
         case WM_MBUTTONUP:
@@ -218,9 +227,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wparam, LPARAM lparam) 
                     //или копипастим аптайм
                     case WM_RBUTTONUP:
                         {
-                            auto_ptr<wchar_t> time(new wchar_t[16]);
-                            getUptimeStr(time.get());
-                            copyTextToClipboard(hWnd, time.get());
+                            wchar_t* time = new wchar_t[16];
+                            getUptimeStr(time);
+                            copyTextToClipboard(hWnd, time);
+                            delete[] time;
                         }
                         break;
                     //или выходим
